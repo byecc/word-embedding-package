@@ -8,7 +8,7 @@ class LoadEmbedding(nn.Embedding):
         super(LoadEmbedding, self).__init__(num_embeddings,embedding_dim)
         self.embedding_dict = {}
 
-    def load_embedding_by_file(self,file,binary = False,encoding='utf8',datatype=float32):
+    def load_pretrained_embedding(self,file,model_dict,binary = False,encoding='utf8',datatype=float32):
         self.embedding_dict = {}
         with open(file,'rb') as fin:
             header = str(fin.readline(),encoding).split()
@@ -32,14 +32,24 @@ class LoadEmbedding(nn.Embedding):
                             word.append(ch)
                     word = str(b''.join(word),encoding)
                     weight = fromstring(fin.read(binary_len), dtype=datatype)
-                    self.embedding_dict[word] = weight
+                    if word in model_dict:
+                        self.embedding_dict[word] = weight
             else:
                 for i in range(vocab_size):
                     data = str(fin.readline(),encoding).strip().split(' ')
-                    word,weight = data[0],fromstring(' '.join(data[1:]),dtype=datatype)
-                    self.embedding_dict[word] = weight
-        narray = np.empty(0,0)
-        for e in self.embedding_dict.values():
-            np.concatenate(narray,e)
+                    word,weight = data[0],fromstring(' '.join(data[1:]),dtype=datatype,sep=' ')
+                    if word in model_dict:
+                        self.embedding_dict[word] = weight
+        narray = np.empty((1,dim_size),dtype=datatype)
+        num = 0
+        for k,v in self.embedding_dict.items():
+            temp = np.array([v])
+            if num == 0:
+                narray = temp
+            else:
+                narray = np.concatenate(([narray,temp]))
+            num+=1
+            print("concatenate %d ,word : %s "%(num,k))
         self.weight = nn.Parameter(torch.FloatTensor(narray))
         self.num_embeddings,self.embedding_dim= vocab_size,dim_size
+
