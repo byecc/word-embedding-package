@@ -9,6 +9,14 @@ class LoadEmbedding(nn.Embedding):
         self.embedding_dict = {}
 
     def load_pretrained_embedding(self,file,model_dict,binary = False,encoding='utf8',datatype=float32):
+        """
+        :param file: pretrained embedding file path
+        :param model_dict: features dict
+        :param binary: if the file is binary ,set binary True,else set False
+        :param encoding: the default encoding is 'utf8'
+        :param datatype: vector datatype , the default is float32
+        :return:
+        """
         self.embedding_dict = {}
         with open(file,'rb') as fin:
             header = str(fin.readline(),encoding).split()
