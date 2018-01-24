@@ -40,16 +40,20 @@ class LoadEmbedding(nn.Embedding):
                     word,weight = data[0],fromstring(' '.join(data[1:]),dtype=datatype,sep=' ')
                     if word in model_dict:
                         self.embedding_dict[word] = weight
-        narray = np.empty((1,dim_size),dtype=datatype)
+        narray = np.empty((0,0))
         num = 0
-        for k,v in self.embedding_dict.items():
-            temp = np.array([v])
+        for k,v in model_dict.items():
+            if k in self.embedding_dict.keys():
+                temp = np.array([self.embedding_dict[k]])
+            else:
+                temp = np.array([[random.uniform(-0.01,0.01) for i in range(dim_size)]])
             if num == 0:
                 narray = temp
-            else:
-                narray = np.concatenate(([narray,temp]))
+                num += 1
+                continue
+            narray = np.concatenate(([narray,temp]))
             num+=1
             print("concatenate %d ,word : %s "%(num,k))
         self.weight = nn.Parameter(torch.FloatTensor(narray))
-        self.num_embeddings,self.embedding_dim= vocab_size,dim_size
+        # self.num_embeddings,self.embedding_dim= vocab_size,dim_size
 
