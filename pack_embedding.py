@@ -4,25 +4,31 @@ import torch.nn as nn
 import torch
 import pickle
 import os
+import random
+
+random.seed(5)
 
 class LoadEmbedding(nn.Embedding):
     def __init__(self, num_embeddings, embedding_dim):
         super(LoadEmbedding, self).__init__(num_embeddings, embedding_dim)
         self.embedding_dict = {}
 
-    def load_pretrained_embedding(self, file, model_dict, embed_pickle="embed_file.pkl",binary=False, encoding='utf8', datatype=float32):
+    def load_pretrained_embedding(self, file, vocab_dict, embed_pickle=None,binary=False,
+                                  encoding='utf8', datatype=float32):
         """
         :param file: pretrained embedding file path
-        :param model_dict: features dict
+        :param vocab_dict: features dict
         :param embed_pickle: save embed file
         :param binary: if the file is binary ,set binary True,else set False
         :param encoding: the default encoding is 'utf8'
         :param datatype: vector datatype , the default is float32
         :return:
         """
+        if embed_pickle is None:
+            raise FileNotFoundError
         if os.path.exists(embed_pickle):
-            narray = pickle.load(open(embed_pickle,'rb'))
-            self.weight = nn.Parameter(torch.FloatTensor(narray))
+            nparray = pickle.load(open(embed_pickle,'rb'))
+            self.weight = nn.Parameter(torch.FloatTensor(nparray))
         else:
             with open(file, 'rb') as fin:
                 header = str(fin.readline(), encoding).split()
@@ -46,7 +52,7 @@ class LoadEmbedding(nn.Embedding):
                                 word.append(ch)
                         word = str(b''.join(word), encoding)
                         weight = fromstring(fin.read(binary_len), dtype=datatype)
-                        if word in model_dict:
+                        if word in vocab_dict:
                             self.embedding_dict[word] = weight
                 else:
                     if header.__len__() == 1:
@@ -62,24 +68,17 @@ class LoadEmbedding(nn.Embedding):
                     for i in range(vocab_size):
                         data = str(fin.readline(), encoding).strip().split(' ')
                         word, weight = data[0], fromstring(' '.join(data[1:]), dtype=datatype, sep=' ')
-                        if word in model_dict:
+                        if word in vocab_dict:
                             self.embedding_dict[word] = weight
-            narray = np.empty((0, 0))
-            num = 0
-            for k, v in model_dict.items():
-                if k in self.embedding_dict.keys():
-                    temp = np.array([self.embedding_dict[k]])
-                else:
-                    temp = np.array([[random.uniform(-0.01, 0.01) for i in range(dim_size)]])
-                if num == 0:
-                    narray = temp
-                    num += 1
-                    continue
-                narray = np.concatenate(([narray, temp]))
-                num += 1
-                print("concatenate %d ,word : %s " % (num, k))
-            pickle.dump(narray,open(embed_pickle,'wb'))
-            self.weight = nn.Parameter(torch.FloatTensor(narray))
 
-le = LoadEmbedding(0, 0)
-le.load_pretrained_embedding('word2vec.test.bin', {}, binary=True)
+            nparray = np.zeros((len(vocab_dict),dim_size))
+            num = 0
+            for k, v in vocab_dict.items():
+                if k in self.embedding_dict.keys():
+                    nparray[v] = np.array(self.embedding_dict[k])
+                else:
+                    nparray[v] = np.array([[random.uniform(-0.01, 0.01) for i in range(dim_size)]])
+                num+=1
+                print("word : {}".format(k))
+            pickle.dump(nparray,open(embed_pickle,'wb'))
+            self.weight = nn.Parameter(torch.FloatTensor(nparray))
