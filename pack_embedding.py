@@ -16,6 +16,7 @@ class LoadEmbedding(nn.Embedding):
     def load_pretrained_embedding(self, file, vocab_dict, embed_pickle=None,binary=False,
                                   encoding='utf8', datatype=float32):
         """
+        look up table :padding index weight set 0
         :param file: pretrained embedding file path
         :param vocab_dict: features dict
         :param embed_pickle: save embed file
@@ -76,6 +77,8 @@ class LoadEmbedding(nn.Embedding):
             for k, v in vocab_dict.items():
                 if k in self.embedding_dict.keys():
                     nparray[v] = np.array(self.embedding_dict[k])
+                elif v == 0:
+                    nparray[v] = np.array([[0 for i in range(dim_size)]])
                 else:
                     nparray[v] = np.array([[random.uniform(-0.01, 0.01) for i in range(dim_size)]])
                 num+=1
