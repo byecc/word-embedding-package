@@ -23,7 +23,6 @@ class LoadEmbedding(nn.Embedding):
         :param binary: if the file is binary ,set binary True,else set False
         :param encoding: the default encoding is 'utf8'
         :param datatype: vector datatype , the default is float32
-        :return
         """
         if embed_pickle is None:
             raise FileNotFoundError
