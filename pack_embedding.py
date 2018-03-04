@@ -8,15 +8,15 @@ import random
 
 random.seed(5)
 
+
 class LoadEmbedding(nn.Embedding):
     def __init__(self, num_embeddings, embedding_dim):
         super(LoadEmbedding, self).__init__(num_embeddings, embedding_dim)
         self.embedding_dict = {}
 
-    def load_pretrained_embedding(self, file, vocab_dict, embed_pickle=None,binary=False,
+    def load_pretrained_embedding(self, file, vocab_dict, embed_pickle=None, binary=False,
                                   encoding='utf8', datatype=float32):
         """
-        look up table :padding index weight set 0
         :param file: pretrained embedding file path
         :param vocab_dict: features dict
         :param embed_pickle: save embed file
@@ -28,8 +28,12 @@ class LoadEmbedding(nn.Embedding):
         if embed_pickle is None:
             raise FileNotFoundError
         if os.path.exists(embed_pickle):
-            nparray = pickle.load(open(embed_pickle,'rb'))
-            self.weight = nn.Parameter(torch.FloatTensor(nparray))
+            nparray = pickle.load(open(embed_pickle, 'rb'))
+            vec_sum = np.sum(nparray[0:nparray.shape[0] - 1, :], axis=0)
+            nparray[nparray.shape[0] - 1] = vec_sum / (nparray.shape[
+                                                           0] - 1)  # -unknown- vector initialize by making average, -unknown- index is the last one
+            print("vocabulary complete...")
+            self.weight = nn.Parameter(torch.FloatTensor(nparray),requires_grad=False)
         else:
             with open(file, 'rb') as fin:
                 header = str(fin.readline(), encoding).split()
@@ -72,7 +76,7 @@ class LoadEmbedding(nn.Embedding):
                         if word in vocab_dict:
                             self.embedding_dict[word] = weight
 
-            nparray = np.zeros((len(vocab_dict),dim_size))
+            nparray = np.zeros((len(vocab_dict), dim_size))
             num = 0
             for k, v in vocab_dict.items():
                 if k in self.embedding_dict.keys():
@@ -81,7 +85,11 @@ class LoadEmbedding(nn.Embedding):
                     nparray[v] = np.array([[0 for i in range(dim_size)]])
                 else:
                     nparray[v] = np.array([[random.uniform(-0.01, 0.01) for i in range(dim_size)]])
-                num+=1
-                print("word : {}".format(k))
-            pickle.dump(nparray,open(embed_pickle,'wb'))
-            self.weight = nn.Parameter(torch.FloatTensor(nparray))
+                num += 1
+                # print("word : {}".format(k))
+            print("vocabulary complete...")
+            vec_sum = np.sum(nparray[0:nparray.shape[0] - 1, :], axis=0)
+            nparray[nparray.shape[0] - 1] = vec_sum / (nparray.shape[
+                                                           0] - 1)  # -unknown- vector initialize by making average, -unknown- index is the last one
+            pickle.dump(nparray, open(embed_pickle, 'wb'))
+            self.weight = nn.Parameter(torch.FloatTensor(nparray),requires_grad=False)
