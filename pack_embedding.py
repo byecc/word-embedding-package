@@ -17,7 +17,7 @@ class LoadEmbedding(nn.Embedding):
         self.embedding_dict = {}
         if hyperparameter.pretrain:
             self.load_pretrained_embedding(hyperparameter.pretrain_file,hyperparameter.vocab,hyperparameter.embed_pickle,
-                                           hyperparameter.pretrain_file_bianry)
+                                           hyperparameter.pretrain_file_bianry,hyperparameter.fine_tune)
         else:
             self.init_embedding()
 
