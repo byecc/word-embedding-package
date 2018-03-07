@@ -10,17 +10,25 @@ random.seed(5)
 
 
 class LoadEmbedding(nn.Embedding):
-    def __init__(self, num_embeddings, embedding_dim):
-        super(LoadEmbedding, self).__init__(num_embeddings, embedding_dim)
+    def __init__(self, num_embeddings,embedding_dim,hyperparameter):
+        super(LoadEmbedding, self).__init__(num_embeddings,embedding_dim)
+        self.V = num_embeddings
+        self.D = embedding_dim
         self.embedding_dict = {}
+        if hyperparameter.pretrain:
+            self.load_pretrained_embedding(hyperparameter.pretrain_file,hyperparameter.vocab,hyperparameter.embed_pickle,
+                                           hyperparameter.pretrain_file_bianry)
+        else:
+            self.init_embedding()
 
     def load_pretrained_embedding(self, file, vocab_dict, embed_pickle=None, binary=False,
-                                  encoding='utf8', datatype=float32):
+                                  requires_grad = False,encoding='utf8', datatype=float32):
         """
         :param file: pretrained embedding file path
         :param vocab_dict: features dict
         :param embed_pickle: save embed file
         :param binary: if the file is binary ,set binary True,else set False
+        :param requires_grad: fine-tuned
         :param encoding: the default encoding is 'utf8'
         :param datatype: vector datatype , the default is float32
         """
@@ -32,7 +40,7 @@ class LoadEmbedding(nn.Embedding):
             nparray[nparray.shape[0] - 1] = vec_sum / (nparray.shape[
                                                            0] - 1)  # -unknown- vector initialize by making average, -unknown- index is the last one
             print("vocabulary complete...")
-            self.weight = nn.Parameter(torch.FloatTensor(nparray),requires_grad=False)
+            self.weight = nn.Parameter(torch.FloatTensor(nparray),requires_grad=requires_grad)
         else:
             with open(file, 'rb') as fin:
                 header = str(fin.readline(), encoding).split()
@@ -75,7 +83,7 @@ class LoadEmbedding(nn.Embedding):
                         if word in vocab_dict:
                             self.embedding_dict[word] = weight
 
-            nparray = np.zeros((len(vocab_dict), dim_size))
+            nparray = np.zeros(shape=[self.V,self.D])
             num = 0
             for k, v in vocab_dict.items():
                 if k in self.embedding_dict.keys():
@@ -91,4 +99,33 @@ class LoadEmbedding(nn.Embedding):
             nparray[nparray.shape[0] - 1] = vec_sum / (nparray.shape[
                                                            0] - 1)  # -unknown- vector initialize by making average, -unknown- index is the last one
             pickle.dump(nparray, open(embed_pickle, 'wb'))
-            self.weight = nn.Parameter(torch.FloatTensor(nparray),requires_grad=False)
+            self.weight = nn.Parameter(torch.FloatTensor(nparray),requires_grad=requires_grad)
+
+    def init_embedding(self,embed_pickle = None,requires_grad = False,init_way=0):
+        """
+
+        :param embed_pickle: pretrained embedding file path
+        :param requires_grad: fine-tuned
+        :param init_way: 0: init by zero. 1: init by normal. 2: init by uniform
+        :return:
+        """
+        if embed_pickle is None:
+            raise FileNotFoundError
+        if os.path.exists(embed_pickle):
+            nparray = pickle.load(open(embed_pickle, 'rb'))
+            print("vocabulary complete...")
+            self.weight = nn.Parameter(torch.FloatTensor(nparray), requires_grad=requires_grad)
+        else:
+            nparray = np.zeros(shape=[self.V,self.D])
+            for v in range(self.V):
+                if init_way == 0:
+                    nparray[v] = np.array([[0 for i in range(self.D)]])
+                elif init_way == 1:
+                    nparray[v] = np.array([[random.normal(0,0.01) for i in range(self.D)]])
+                elif init_way == 2:
+                    nparray[v] = np.array([[random.uniform(-0.01,0.01) for i in range(self.D)]])
+                else:
+                    raise RuntimeError("init failed,pls check init way")
+            pickle.dump(nparray,open(embed_pickle,'wb'))
+            self.weight = nn.Parameter(torch.FloatTensor(nparray),requires_grad=requires_grad)
+
